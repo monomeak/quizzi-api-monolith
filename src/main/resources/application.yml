@@ -1,0 +1,43 @@
+# ============================================================
+# COMMON settings - loaded for every profile.
+# ${VAR:default} means "read environment variable VAR, else use default".
+# ============================================================
+spring:
+  application:
+    name: quiz-app
+
+  # Which profile to run. Override with: SPRING_PROFILES_ACTIVE=prod
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  jpa:
+    # Close the Hibernate session at the end of the service call, not at the end of
+    # the HTTP response. Forces us to be explicit about transactions - good practice.
+    open-in-view: false
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# ---- Swagger / OpenAPI ----
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+# ---- Actuator ----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# ---- Login accounts (in-memory, see SecurityConfig) ----
+app:
+  security:
+    admin:
+      username: ${ADMIN_USERNAME:admin}
+      password: ${ADMIN_PASSWORD:admin123}
+    user:
+      username: ${USER_USERNAME:user}
+      password: ${USER_PASSWORD:user123}

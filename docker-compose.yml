@@ -1,0 +1,20 @@
+# PostgreSQL for local development. Start it before running the app:
+#   docker compose up -d
+# The dev profile creates its own schema. For the prod profile, run the scripts once:
+#   psql -h localhost -U postgres -d quizdb -f db/postgres/01_schema.sql
+#   psql -h localhost -U postgres -d quizdb -f db/postgres/02_seed.sql
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: quiz-postgres
+    environment:
+      POSTGRES_DB: quizdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: superpassword
+    ports:
+      - "5430:5432"
+    volumes:
+      - quiz-pgdata:/var/lib/postgresql/data
+
+volumes:
+  quiz-pgdata:

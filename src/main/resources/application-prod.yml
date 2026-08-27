@@ -1,0 +1,30 @@
+spring:
+  config:
+    import: optional:file:.env.prod[.properties]
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # NEVER let Hibernate change a production schema. It only checks that the
+      # tables match the entities and fails fast if they do not.
+      ddl-auto: validate
+    show-sql: false
+
+  sql:
+    init:
+      mode: never
+
+# Turn the docs off in production unless explicitly enabled.
+springdoc:
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+
+logging:
+  level:
+    root: INFO
