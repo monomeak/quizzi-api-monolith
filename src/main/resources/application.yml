@@ -31,13 +31,3 @@ management:
     web:
       exposure:
         include: health,info
-
-# ---- Login accounts (in-memory, see SecurityConfig) ----
-app:
-  security:
-    admin:
-      username: ${ADMIN_USERNAME:admin}
-      password: ${ADMIN_PASSWORD:admin123}
-    user:
-      username: ${USER_USERNAME:user}
-      password: ${USER_PASSWORD:user123}

@@ -32,7 +32,7 @@ public class QuizServiceImpl implements QuizService {
     private static final QuizMapper MAPPER = Mappers.getMapper(QuizMapper.class);
 
     private final QuizRepository quizRepository;
-    private  final UserService userService;
+    private final UserService userService;
     private final JoinCodeGenerator joinCodeGenerator;
 
 

@@ -2,15 +2,22 @@ spring:
   config:
     import: optional:file:.env.dev[.properties]
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/questiondb}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/quizdb}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:sokmeak1376}
     driver-class-name: org.postgresql.Driver
+  flyway:
+    # Two locations: the real schema, plus demo data that prod never sees.
+    locations: classpath:db/migration,classpath:db/seed
+    # Handy while learning: wipes and rebuilds the database when a migration
+    # checksum changes. NEVER enable this outside dev - it drops every table.
+    clean-disabled: false
+    out-of-order: true
 
   jpa:
     hibernate:
       # Let Hibernate create the tables from the @Entity classes...
-      ddl-auto: update
+      ddl-auto: validate
     # See the SQL Hibernate generates - very useful while learning.
     show-sql: true
     properties:

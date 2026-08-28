@@ -12,6 +12,6 @@ public record QuizDetailResponse (
         String joinCode,
         String ownerUsername,
         LocalDateTime createdAt,
-        List<QuestionResponse> question
+        List<QuestionResponse> questions
 ){
 }

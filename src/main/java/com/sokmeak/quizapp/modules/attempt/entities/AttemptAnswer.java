@@ -31,7 +31,7 @@ public class AttemptAnswer {
 
     /** null means the player skipped the question. */
     @Enumerated(EnumType.STRING)
-    @Column(name = "selected_option", length = 1)
+    @Column(name = "selected_option", length = 10)
     private OptionKey selectedOption;
 
     @Column(nullable = false)

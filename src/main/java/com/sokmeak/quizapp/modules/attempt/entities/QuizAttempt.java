@@ -59,10 +59,10 @@ public class QuizAttempt {
     // one to many quiz attemp answer
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
-    private List<AttemptAnswer> attemptAnswers = new ArrayList<>();
+    private List<AttemptAnswer> answers = new ArrayList<>();
 
     public void addAnswer(AttemptAnswer attemptAnswer) {
-        attemptAnswers.add(attemptAnswer);
+        answers.add(attemptAnswer);
     }
 
 }

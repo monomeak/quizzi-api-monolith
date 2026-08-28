@@ -8,7 +8,7 @@ import lombok.*;
 
 
 @Entity
-@Table(name = "questions")
+@Table(name = "question")
 @Setter
 @Getter
 @NoArgsConstructor
@@ -42,7 +42,7 @@ public class Question {
     private String optionD;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "correct_option", nullable = false, length = 1)
+    @Column(name = "correct_option", nullable = false, length = 10)
     private OptionKey correctOption;
 
     @Enumerated(EnumType.STRING)
