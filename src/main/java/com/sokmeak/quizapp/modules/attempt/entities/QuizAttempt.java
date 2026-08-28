@@ -61,7 +61,12 @@ public class QuizAttempt {
     @Builder.Default
     private List<AttemptAnswer> answers = new ArrayList<>();
 
+    /**
+     * Sets the back-reference as well as adding to the list. attempt_id is
+     * NOT NULL, so an answer added without it fails the cascade insert.
+     */
     public void addAnswer(AttemptAnswer attemptAnswer) {
+        attemptAnswer.setAttempt(this);
         answers.add(attemptAnswer);
     }
 
