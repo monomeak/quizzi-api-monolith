@@ -17,6 +17,7 @@ import com.sokmeak.quizapp.modules.quiz.entity.Quiz;
 import com.sokmeak.quizapp.modules.quiz.repository.QuizRepository;
 import com.sokmeak.quizapp.modules.user.entity.User;
 import com.sokmeak.quizapp.modules.user.service.UserService;
+import com.sokmeak.quizapp.utils.AnswerVerdict;
 import com.sokmeak.quizapp.utils.AttemptStatus;
 import com.sokmeak.quizapp.utils.OptionKey;
 import com.sokmeak.quizapp.utils.QuizStatus;
@@ -26,8 +27,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +43,9 @@ import java.util.Map;
 public class AttemptServiceImpl implements AttemptService {
     //  declare mapper
     private static final AttemptMapper MAPPER  =  AttemptMapper.INSTANCE;
+
+    /** Score at or above this counts as a pass on the review screen. */
+    private static final double PASS_MARK = 50d;
 
     // inject some dependencies
     private final AttemptRepository attemptRepository;
@@ -136,14 +142,16 @@ public class AttemptServiceImpl implements AttemptService {
             // loop all question for that quiz
             OptionKey selectedOption =  chosenOptions.get(question.getId());
 
-            // if correct
-            boolean correct = selectedOption == null && selectedOption == question.getCorrectOption();
+            // A skipped question (null) is simply wrong: it can never match a correct option.
+            boolean correct = selectedOption != null && selectedOption == question.getCorrectOption();
             if(correct) {
                 correctCount++;
             }
             // Store the answer so the result stays reproducible later
 
-            attempt.addAnswer(AttemptAnswer.builder().question(question)
+            attempt.addAnswer(AttemptAnswer.builder()
+                    .attempt(attempt)
+                    .question(question)
                     .selectedOption(selectedOption)
                     .correct(correct).build());
 
@@ -156,26 +164,24 @@ public class AttemptServiceImpl implements AttemptService {
 
             ));
 
-            int total = quiz.getQuestions().size();
-
-            double percent = total == 0 ? 0d : round2((correctCount * 100d)/total); // 7 out of 10 => 70.0 round2 still 70.00
-
-            attempt.setStatus(AttemptStatus.SUBMITTED);
-            attempt.setSubmittedAt(LocalDateTime.now());
-            attempt.setCorrectCount(correctCount);
-            attempt.setTotalQuestions(total);
-            attempt.setScorePercent(percent);
-
-            log.info("Attempt id={} submitted by {}: {}/{} ({}%)", attemptId, username, correctCount, total, percent);
-
-            return new AttemptResultResponse(
-                    attempt.getId(), quiz.getId(), quiz.getTitle(), correctCount, total, percent, attempt.getSubmittedAt(), feedbackResponses
-            );
-
         }
 
+        // Scored once, after every question has been marked - not per iteration.
+        int total = quiz.getQuestions().size();
 
-        return null;
+        double percent = total == 0 ? 0d : round2((correctCount * 100d)/total); // 7 out of 10 => 70.0 round2 still 70.00
+
+        attempt.setStatus(AttemptStatus.SUBMITTED);
+        attempt.setSubmittedAt(LocalDateTime.now());
+        attempt.setCorrectCount(correctCount);
+        attempt.setTotalQuestions(total);
+        attempt.setScorePercent(percent);
+
+        log.info("Attempt id={} submitted by {}: {}/{} ({}%)", attemptId, username, correctCount, total, percent);
+
+        return new AttemptResultResponse(
+                attempt.getId(), quiz.getId(), quiz.getTitle(), correctCount, total, percent, attempt.getSubmittedAt(), feedbackResponses
+        );
     }
 
     @Override
@@ -184,6 +190,73 @@ public class AttemptServiceImpl implements AttemptService {
         List<QuizAttempt> responses = new ArrayList<>();
         responses = attemptRepository.findAllByUserIdOrderByStartedAtDesc(player.getId());
         return MAPPER.attemptsToHistory(responses);
+    }
+
+
+    @Override
+    public AttemptReviewResponse review(Long attemptId, String username) {
+
+        // One query brings back the attempt, its quiz and every answer with its question.
+        QuizAttempt attempt = attemptRepository.findByIdWithAnswers(attemptId)
+                .orElseThrow(() -> new NotFoundException("Attempt not found: " + attemptId));
+
+        requireOwner(attempt, username);
+
+        // Answers are only written at submit time, and the correct options must stay
+        // hidden while the quiz is still being played - so an unfinished run has
+        // nothing to review yet.
+        if (attempt.getStatus() != AttemptStatus.SUBMITTED) {
+            throw new ConflictException("Submit this attempt before reviewing it");
+        }
+
+        Quiz quiz = attempt.getQuiz();
+
+        List<AnswerReviewResponse> reviewed = attempt.getAnswers().stream()
+                .sorted(Comparator.comparing((AttemptAnswer answer) -> answer.getQuestion().getPosition()))
+                .map(this::toAnswerReview)
+                .toList();
+
+        int correctCount = 0;
+        int skippedCount = 0;
+        for (AttemptAnswer answer : attempt.getAnswers()) {
+            if (answer.isCorrect()) {
+                correctCount++;
+            } else if (answer.getSelectedOption() == null) {
+                // Blank answers are still wrong, but the player is told they left it empty.
+                skippedCount++;
+            }
+        }
+
+        int total = reviewed.size();
+        int incorrectCount = total - correctCount - skippedCount;
+
+        // The stored score is what the leaderboard shows, so the review must repeat it
+        // rather than compute a second, possibly different, number.
+        double percent = attempt.getScorePercent() != null
+                ? attempt.getScorePercent()
+                : (total == 0 ? 0d : round2((correctCount * 100d) / total));
+
+        Long durationSeconds = attempt.getSubmittedAt() == null
+                ? null
+                : Duration.between(attempt.getStartedAt(), attempt.getSubmittedAt()).toSeconds();
+
+        return new AttemptReviewResponse(
+                attempt.getId(),
+                quiz.getId(),
+                quiz.getTitle(),
+                quiz.getCategory(),
+                attempt.getStatus().name(),
+                correctCount,
+                incorrectCount,
+                skippedCount,
+                total,
+                percent,
+                percent >= PASS_MARK,
+                summaryFor(percent, correctCount, total),
+                attempt.getStartedAt(),
+                attempt.getSubmittedAt(),
+                durationSeconds,
+                reviewed);
     }
 
     @Override
@@ -215,10 +288,86 @@ public class AttemptServiceImpl implements AttemptService {
     private QuizAttempt requireOwnAttempt(Long attemptId, String username) {
         QuizAttempt attempt = attemptRepository.findById(attemptId).orElseThrow(() -> new NotFoundException("Attempt not found: " + attemptId));
        // check if the quiz attempt is belong to the user ot not.
+        requireOwner(attempt, username);
+        return attempt;
+    }
+
+    private void requireOwner(QuizAttempt attempt, String username) {
         if (!attempt.getUser().getUsername().equals(username)) {
             throw new AccessDeniedException("You are not the owner of this attempt");
         }
-        return attempt;
+    }
+
+    private AnswerReviewResponse toAnswerReview(AttemptAnswer answer) {
+        Question question = answer.getQuestion();
+        OptionKey selected = answer.getSelectedOption();
+        OptionKey correctKey = question.getCorrectOption();
+
+        AnswerVerdict verdict = answer.isCorrect()
+                ? AnswerVerdict.CORRECT
+                : selected == null ? AnswerVerdict.SKIPPED : AnswerVerdict.INCORRECT;
+
+        return new AnswerReviewResponse(
+                question.getId(),
+                question.getPosition(),
+                question.getQuestionText(),
+                question.getOptionA(),
+                question.getOptionB(),
+                question.getOptionC(),
+                question.getOptionD(),
+                selected == null ? null : selected.name(),
+                optionText(question, selected),
+                correctKey.name(),
+                optionText(question, correctKey),
+                answer.isCorrect(),
+                verdict.name(),
+                feedbackFor(verdict, question, correctKey));
+    }
+
+    /**
+     * The wording rule for the review screen, kept in one place: praise when the
+     * answer was right, otherwise spell out the answer that would have been.
+     */
+    private String feedbackFor(AnswerVerdict verdict, Question question, OptionKey correctKey) {
+        String rightAnswer = correctKey.name() + ". " + optionText(question, correctKey);
+        return switch (verdict) {
+            case CORRECT -> "Well done! That is the right answer.";
+            case SKIPPED -> "You skipped this one. The correct answer was " + rightAnswer;
+            case INCORRECT -> "Not quite. The correct answer was " + rightAnswer;
+        };
+    }
+
+    /** The text behind a letter, so the client never has to map A..D itself. */
+    private String optionText(Question question, OptionKey key) {
+        if (key == null) {
+            return null;
+        }
+        return switch (key) {
+            case A -> question.getOptionA();
+            case B -> question.getOptionB();
+            case C -> question.getOptionC();
+            case D -> question.getOptionD();
+        };
+    }
+
+    private String summaryFor(double percent, int correctCount, int total) {
+        if (total == 0) {
+            return "This quiz had no questions to answer.";
+        }
+        String score = correctCount + " out of " + total + " correct";
+        if (percent >= 100d) {
+            return "Perfect score - " + score + "!";
+        }
+        if (percent >= 80d) {
+            return "Great job - " + score + ".";
+        }
+        if (percent >= PASS_MARK) {
+            return "You passed - " + score + ".";
+        }
+        if (percent >= 30d) {
+            return "Almost there - " + score + ". Look over the ones you missed and try the next quiz.";
+        }
+        return "Tough round - " + score + ". The correct answers are below.";
     }
 
     private AttemptResponse toAttemptResponse(QuizAttempt attempt, Quiz quiz) {

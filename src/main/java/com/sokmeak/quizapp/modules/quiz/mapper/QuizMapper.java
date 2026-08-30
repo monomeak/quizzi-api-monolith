@@ -27,9 +27,10 @@ public interface QuizMapper {
     List<QuizSummaryResponse> quizzesToSummaries(List<Quiz> quizzes);
 
     @Mapping(source = "owner.username", target = "ownerUsername")
+
     QuizDetailResponse quizToDetail(Quiz quiz);
 
-    QuestionResponse quizToQuestionResponse(Quiz quiz);
+    QuestionResponse quizToQuestionResponse(Question question);
 
     List<QuestionResponse> questionsToResponses(List<Question> questions);
 

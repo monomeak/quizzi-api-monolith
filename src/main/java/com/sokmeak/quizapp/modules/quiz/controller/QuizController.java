@@ -1,19 +1,30 @@
 package com.sokmeak.quizapp.modules.quiz.controller;
 
 
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.sokmeak.quizapp.modules.quiz.dto.request.CreateQuizRequest;
+import com.sokmeak.quizapp.modules.quiz.dto.request.UpdateQuizRequest;
 import com.sokmeak.quizapp.modules.quiz.dto.response.QuizDetailResponse;
 import com.sokmeak.quizapp.modules.quiz.dto.response.QuizSummaryResponse;
 import com.sokmeak.quizapp.modules.quiz.service.QuizService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/quizzes")
@@ -22,6 +33,7 @@ import java.util.List;
 public class QuizController {
     private final QuizService quizService;
 
+    // CRUD QUIZ
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -32,6 +44,21 @@ public class QuizController {
     }
 
 
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update a quiz you own; questions can only be replaced while it is a DRAFT")
+    public QuizDetailResponse update(@PathVariable Long id,
+                                     Authentication authentication,
+                                     @Valid @RequestBody UpdateQuizRequest request) {
+        return quizService.update(id, authentication.getName(), request);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete a quiz you own; refused once somebody has played it")
+    public void delete(@PathVariable Long id, Authentication authentication) {
+        quizService.delete(id, authentication.getName());
+    }
 
     @GetMapping("/mine")
     @Operation(summary = "Quizzes I created")

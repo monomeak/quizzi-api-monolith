@@ -59,10 +59,15 @@ public class QuizAttempt {
     // one to many quiz attemp answer
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
-    private List<AttemptAnswer> attemptAnswers = new ArrayList<>();
+    private List<AttemptAnswer> answers = new ArrayList<>();
 
+    /**
+     * Sets the back-reference as well as adding to the list. attempt_id is
+     * NOT NULL, so an answer added without it fails the cascade insert.
+     */
     public void addAnswer(AttemptAnswer attemptAnswer) {
-        attemptAnswers.add(attemptAnswer);
+        attemptAnswer.setAttempt(this);
+        answers.add(attemptAnswer);
     }
 
 }

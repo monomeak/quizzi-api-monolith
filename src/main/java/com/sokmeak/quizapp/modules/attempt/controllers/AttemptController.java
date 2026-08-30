@@ -6,6 +6,7 @@ import com.sokmeak.quizapp.modules.attempt.dto.request.SubmitAttemptRequest;
 import com.sokmeak.quizapp.modules.attempt.dto.response.AttemptHistoryResponse;
 import com.sokmeak.quizapp.modules.attempt.dto.response.AttemptResponse;
 import com.sokmeak.quizapp.modules.attempt.dto.response.AttemptResultResponse;
+import com.sokmeak.quizapp.modules.attempt.dto.response.AttemptReviewResponse;
 import com.sokmeak.quizapp.modules.attempt.service.AttemptService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -51,6 +52,13 @@ public class AttemptController {
     @Operation(summary = "Quizzes I have taken")
     public List<AttemptHistoryResponse> myHistory(Authentication authentication) {
         return attemptService.myHistory(authentication.getName());
+    }
+
+    @GetMapping("/{id}/review")
+    @Operation(summary = "Review a finished attempt question by question: what you picked, "
+            + "whether it was right, and the correct answer when it was not")
+    public AttemptReviewResponse review(Authentication authentication, @PathVariable Long id) {
+        return attemptService.review(id, authentication.getName());
     }
 
 }

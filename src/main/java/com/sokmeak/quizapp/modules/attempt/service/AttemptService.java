@@ -5,6 +5,7 @@ import com.sokmeak.quizapp.modules.attempt.dto.request.SubmitAttemptRequest;
 import com.sokmeak.quizapp.modules.attempt.dto.response.AttemptHistoryResponse;
 import com.sokmeak.quizapp.modules.attempt.dto.response.AttemptResponse;
 import com.sokmeak.quizapp.modules.attempt.dto.response.AttemptResultResponse;
+import com.sokmeak.quizapp.modules.attempt.dto.response.AttemptReviewResponse;
 import com.sokmeak.quizapp.modules.attempt.dto.response.LeaderboardEntryResponse;
 
 import java.util.List;
@@ -17,6 +18,9 @@ public interface AttemptService {
     AttemptResultResponse submit(Long attemptId, String username, SubmitAttemptRequest request);
 
     List<AttemptHistoryResponse> myHistory(String username);
+
+    /** Question by question breakdown of a finished attempt: what you picked, what was right. */
+    AttemptReviewResponse review(Long attemptId, String username);
 
     List<LeaderboardEntryResponse> leaderboard(Long quizId);
 }
